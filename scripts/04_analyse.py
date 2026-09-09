@@ -196,6 +196,65 @@ def fig_experiments() -> None:
     plt.close(fig)
 
 
+def correction_comparison() -> pd.DataFrame | None:
+    """Leaderboards side by side under the two correction strategies.
+
+    Worth its own table because the correction stage turned out to reorder the ranking
+    entirely -- a detector's apparent quality is not separable from what repairs its
+    mistakes, which is precisely the claim the source reports make and never test.
+    """
+    lt_p, mm_p = RESULTS / "benchmark_main.csv", RESULTS / "benchmark_main_medmad.csv"
+    if not (lt_p.exists() and mm_p.exists()):
+        return None
+
+    frames = []
+    for path, label in [(lt_p, "Lipponen-Tarvainen"), (mm_p, "median/MAD")]:
+        lb = leaderboard(pd.read_csv(path))
+        lb = lb[["f1_pct", "ibi_rmse_ms", "rmssd_mae_ms", "sdnn_mae_ms"]].copy()
+        lb["correction"] = label
+        frames.append(lb.reset_index())
+
+    out = pd.concat(frames)
+    wide = out.pivot(index="detector_label", columns="correction",
+                     values=["ibi_rmse_ms", "rmssd_mae_ms"])
+    wide.columns = [f"{a}__{b}" for a, b in wide.columns]
+    wide = wide.reindex(_order(wide.index))
+    wide.to_csv(RESULTS / "correction_comparison.csv")
+    return wide
+
+
+def discrimination(df: pd.DataFrame) -> pd.DataFrame:
+    """How much does each metric actually separate the detectors?
+
+    Correlation alone understates the problem. The point is that F1 *saturates*: on
+    resting finger PPG every detector sits within a fraction of a percentage point of
+    every other, while the errors that matter for PRV span most of an order of
+    magnitude. A metric whose best-to-worst spread is 1.007x cannot rank anything.
+    """
+    lb = leaderboard(df)
+    rows = []
+    for col, name, lower_better in [
+        ("f1_pct", "beat-detection F1", False),
+        ("ibi_rmse_ms", "IBI RMSE", True),
+        ("rmssd_mae_ms", "RMSSD error", True),
+        ("sdnn_mae_ms", "SDNN error", True),
+    ]:
+        v = lb[col].dropna()
+        if v.empty:
+            continue
+        best, worst = (v.min(), v.max()) if lower_better else (v.max(), v.min())
+        rows.append({
+            "metric": name,
+            "best": float(best),
+            "worst": float(worst),
+            "spread_ratio": float(worst / best) if best else np.nan,
+            "cv_pct": float(100 * v.std() / v.mean()),
+        })
+    out = pd.DataFrame(rows)
+    out.to_csv(RESULTS / "discrimination.csv", index=False)
+    return out
+
+
 def sampling_quantisation_model() -> pd.DataFrame | None:
     """Compare the measured sampling-rate degradation with quantisation theory.
 
@@ -266,6 +325,17 @@ def main() -> int:
     print(f"correlation of F1 with RMSSD error:   r = {r_rmssd:+.3f}")
     summary["r_f1_ibi_rmse"] = r_ibi
     summary["r_f1_rmssd_error"] = r_rmssd
+
+    cc = correction_comparison()
+    if cc is not None:
+        print("\nThe correction stage reorders the ranking (median IBI RMSE / RMSSD error, ms)")
+        print(cc.to_string(float_format=lambda v: f"{v:9.2f}"))
+        summary["correction_comparison"] = json.loads(cc.to_json(orient="index"))
+
+    disc = discrimination(df)
+    print("\nDiscriminative power: best-to-worst spread across detectors")
+    print(disc.to_string(index=False, float_format=lambda v: f"{v:10.3f}"))
+    summary["discrimination"] = json.loads(disc.to_json(orient="records"))
 
     for name, fn in [("leaderboard", fig_leaderboard), ("f1_vs_hrv_error", fig_f1_vs_hrv),
                      ("coverage_accuracy", fig_coverage), ("bland_altman", fig_bland_altman)]:

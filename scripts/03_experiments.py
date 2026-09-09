@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from prv import correct, fiducial, io, pipeline, sqi  # noqa: E402
+from prv.detectors import ALL_KEYS  # noqa: E402
 
 RESULTS = ROOT / "results"
 
@@ -78,7 +79,7 @@ def main() -> int:
 
         # ---------------------------------------------------------------- E3
         for strat in correct.STRATEGIES:
-            for det in ("msptdfast", "terma", "findpeaks"):
+            for det in ALL_KEYS:
                 r = pipeline.run(rec, det, correction=strat)
                 if not r.row.get("failed"):
                     e3.append(r.row)

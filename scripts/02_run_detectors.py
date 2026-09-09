@@ -44,7 +44,12 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--records", type=int, default=0, help="limit record count (0 = all)")
     ap.add_argument("--correction", default="lipponen_tarvainen")
+    ap.add_argument("--coverages", default="", help="comma-separated; default 1.0,0.9,0.75,0.5")
+    ap.add_argument("--suffix", default="", help="suffix for the output CSV names")
     args = ap.parse_args()
+
+    coverages = ([float(c) for c in args.coverages.split(",")] if args.coverages
+                 else COVERAGES)
 
     warnings.filterwarnings("ignore")
     RESULTS.mkdir(exist_ok=True)
@@ -58,7 +63,8 @@ def main() -> int:
         return 1
 
     print(f"benchmark: {len(records)} records x {len(ALL_KEYS)} detectors "
-          f"x {len(COVERAGES)} coverage levels, channel={channel}")
+          f"x {len(coverages)} coverage levels, channel={channel}, "
+          f"correction={args.correction}")
 
     rows: list[dict] = []
     floor_rows: list[dict] = []
@@ -69,7 +75,7 @@ def main() -> int:
               f"({rec.duration_s:.0f}s, {len(rec.ecg_beats_s)} ref beats, "
               f"polarity {rec.polarity:+.0f})", flush=True)
 
-        for cov in COVERAGES:
+        for cov in coverages:
             per_det: dict[str, tuple[np.ndarray, np.ndarray]] = {}
             rr_by_ref: dict[int, float] = {}
 
@@ -94,9 +100,10 @@ def main() -> int:
                 floor_rows.append(fl)
 
     df = pd.DataFrame(rows)
-    df.to_csv(RESULTS / "benchmark_main.csv", index=False)
-    pd.DataFrame(floor_rows).to_csv(RESULTS / "prv_floor.csv", index=False)
-    print(f"\nwrote {len(df)} rows -> {RESULTS / 'benchmark_main.csv'}")
+    main_out = RESULTS / f"benchmark_main{args.suffix}.csv"
+    df.to_csv(main_out, index=False)
+    pd.DataFrame(floor_rows).to_csv(RESULTS / f"prv_floor{args.suffix}.csv", index=False)
+    print(f"\nwrote {len(df)} rows -> {main_out}")
 
     ok = df[(df.coverage_target == 1.0) & (~df.failed)]
     summary = ok.groupby("detector_label").agg(
