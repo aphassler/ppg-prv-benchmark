@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+title: "PPG-PRV Benchmark: beat detectors scored on IBI and HRV endpoint error"
+message: "If you use this benchmark, please cite it as below."
+authors:
+  - family-names: Hassler
+    given-names: Andreas Philipp
+license: MIT
+repository-code: "https://github.com/aphassler/ppg-prv-benchmark"
+keywords:
+  - photoplethysmography
+  - pulse rate variability
+  - heart rate variability
+  - beat detection
+  - benchmark
+references:
+  - type: article
+    title: "Detecting beats in the photoplethysmogram: benchmarking open-source algorithms"
+    authors:
+      - family-names: Charlton
+        given-names: Peter H.
+    doi: 10.1088/1361-6579/ac826d
+    year: 2022
+  - type: article
+    title: "The MSPTDfast photoplethysmography beat detection algorithm: design, benchmarking, and open-source distribution"
+    authors:
+      - family-names: Charlton
+        given-names: Peter H.
+    doi: 10.1088/1361-6579/adb89e
+    year: 2025
+  - type: data
+    title: "Pulse Transit Time PPG Dataset"
+    doi: 10.13026/jpan-6n92
+    year: 2022

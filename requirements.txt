@@ -1,0 +1,7 @@
+numpy>=1.26
+scipy>=1.11
+pandas>=2.0
+matplotlib>=3.8
+wfdb>=4.1
+neurokit2>=0.2.10
+heartpy>=1.2.7

@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ppg-prv-benchmark"
+version = "0.1.0"
+description = "End-to-end benchmark of PPG beat detectors for pulse rate variability, scored on IBI and HRV endpoint error rather than beat-detection F1"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "pandas>=2.0",
+    "matplotlib>=3.8",
+    "wfdb>=4.1",
+    "neurokit2>=0.2.10",
+    "heartpy>=1.2.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.6"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "tests"]
+filterwarnings = ["ignore::DeprecationWarning", "ignore::UserWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["B905"]
