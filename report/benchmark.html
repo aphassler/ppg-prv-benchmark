@@ -1,0 +1,934 @@
+<title>Beat Detectors at the PRV Floor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,500;0,600;1,400&display=swap">
+
+<style>
+:root {
+  --ground:    #F7F8F6;
+  --surface:   #FFFFFF;
+  --sunk:      #EFF2EE;
+  --ink:       #12171A;
+  --ink-2:     #3C4642;
+  --muted:     #65706B;
+  --rule:      #DDE3DD;
+  --rule-firm: #C3CCC4;
+
+  /* Series colours taken from the sensor's own LEDs: 537 nm green is the channel
+     the benchmark actually runs on. Validated for CVD separation in both themes. */
+  --s1: #2E7D4F;   /* 537 nm green  */
+  --s2: #2C5AA0;   /* slate blue    */
+  --s3: #B3352F;   /* 660 nm red    */
+  --s1-soft: #2E7D4F26;
+  --bad-bg:  #B3352F14;
+
+  --measure: 68ch;
+  --step--1: 0.815rem;
+  --step-0:  0.98rem;
+  --step-1:  1.24rem;
+  --step-2:  1.6rem;
+  --step-3:  2.15rem;
+  --step-4:  2.9rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:    #0E1211;
+    --surface:   #151A18;
+    --sunk:      #1B211E;
+    --ink:       #E7ECE8;
+    --ink-2:     #C2CCC6;
+    --muted:     #93A099;
+    --rule:      #28312D;
+    --rule-firm: #3A453F;
+    --s1: #58B87E;
+    --s2: #7FA6E8;
+    --s3: #E0705F;
+    --s1-soft: #58B87E2E;
+    --bad-bg:  #E0705F1A;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground:    #0E1211;
+  --surface:   #151A18;
+  --sunk:      #1B211E;
+  --ink:       #E7ECE8;
+  --ink-2:     #C2CCC6;
+  --muted:     #93A099;
+  --rule:      #28312D;
+  --rule-firm: #3A453F;
+  --s1: #58B87E;
+  --s2: #7FA6E8;
+  --s3: #E0705F;
+  --s1-soft: #58B87E2E;
+  --bad-bg:  #E0705F1A;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--step-0);
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 4.5rem) clamp(1.1rem, 4vw, 2.5rem) 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 3.4rem;
+}
+
+.col { max-width: var(--measure); }
+
+h1, h2, h3 {
+  font-family: "IBM Plex Serif", ui-serif, Georgia, serif;
+  font-weight: 600;
+  line-height: 1.16;
+  text-wrap: balance;
+  margin: 0;
+}
+h1 { font-size: var(--step-4); letter-spacing: -0.02em; }
+h2 { font-size: var(--step-2); letter-spacing: -0.01em; }
+h3 { font-size: var(--step-1); }
+p  { margin: 0 0 1rem; }
+p:last-child { margin-bottom: 0; }
+
+a { color: var(--s1); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--s1); outline-offset: 3px; border-radius: 2px;
+}
+
+.eyebrow {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: var(--step--1);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: var(--muted);
+  margin: 0 0 0.55rem;
+}
+
+.num, td.n, th.n { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- masthead */
+.masthead { display: flex; flex-direction: column; gap: 1.5rem; }
+.lede {
+  font-family: "IBM Plex Serif", ui-serif, Georgia, serif;
+  font-size: var(--step-1);
+  line-height: 1.5;
+  color: var(--ink-2);
+  max-width: 60ch;
+}
+.lede strong { color: var(--ink); font-weight: 600; }
+
+.provenance {
+  display: flex; flex-wrap: wrap; gap: 0 1.6rem;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: var(--step--1); color: var(--muted);
+  border-top: 1px solid var(--rule); padding-top: 0.85rem;
+}
+
+/* ------------------------------------------------------------ verdict rail */
+.verdicts {
+  display: grid; gap: 1px; background: var(--rule);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  border: 1px solid var(--rule);
+}
+.verdict { background: var(--surface); padding: 1.15rem 1.25rem; }
+.verdict .v {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--step-2); font-weight: 500; color: var(--s1);
+  display: block; line-height: 1.1;
+}
+.verdict .v.warn { color: var(--s3); }
+.verdict .k { display: block; font-size: var(--step--1); color: var(--muted); margin-top: 0.4rem; }
+
+/* ----------------------------------------------------------------- tables */
+.panel { display: flex; flex-direction: column; gap: 0.7rem; }
+.scroll { overflow-x: auto; }
+table {
+  border-collapse: collapse; width: 100%;
+  font-size: var(--step--1); background: var(--surface);
+}
+caption {
+  text-align: left; color: var(--muted); font-size: var(--step--1);
+  padding-bottom: 0.6rem; line-height: 1.5;
+}
+th, td { padding: 0.5rem 0.7rem; text-align: left; white-space: nowrap; }
+thead th {
+  font-weight: 600; font-size: var(--step--1); color: var(--ink-2);
+  border-bottom: 1.5px solid var(--rule-firm);
+}
+tbody tr { border-bottom: 1px solid var(--rule); }
+tbody tr:last-child { border-bottom: none; }
+td.n, th.n { text-align: right; }
+tbody tr.best { background: var(--s1-soft); }
+tbody tr.worst { background: var(--bad-bg); }
+td.name { font-weight: 500; }
+.unit { color: var(--muted); font-weight: 400; }
+
+/* ------------------------------------------------------------------ errata */
+.errata { display: flex; flex-direction: column; gap: 0; border-top: 1px solid var(--rule); }
+.erratum {
+  display: grid; grid-template-columns: 2.4rem 1fr; gap: 0 1rem;
+  padding: 1.1rem 0; border-bottom: 1px solid var(--rule);
+}
+.erratum > .idx {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: var(--step--1); color: var(--s3); padding-top: 0.15rem;
+}
+.erratum .claim {
+  font-style: italic; font-family: "IBM Plex Serif", ui-serif, Georgia, serif;
+  color: var(--ink-2); margin: 0 0 0.4rem;
+}
+.erratum .fix { margin: 0; }
+.erratum .src {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: var(--step--1); color: var(--muted); margin: 0.4rem 0 0;
+}
+
+/* ------------------------------------------------------------------ charts */
+figure { margin: 0; display: flex; flex-direction: column; gap: 0.6rem; }
+figcaption { font-size: var(--step--1); color: var(--muted); line-height: 1.55; }
+svg { display: block; width: 100%; height: auto; }
+.ax-line { stroke: var(--rule-firm); stroke-width: 1; }
+.grid-line { stroke: var(--rule); stroke-width: 1; }
+.ax-text { fill: var(--muted); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; }
+.row-text { fill: var(--ink-2); font-family: "IBM Plex Sans", sans-serif; font-size: 12px; }
+.val-text { fill: var(--ink); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.panel-title { fill: var(--ink); font-family: "IBM Plex Serif", serif; font-size: 13px; font-weight: 600; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 0.35rem 1.2rem; font-size: var(--step--1); color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 0.45rem; }
+.swatch { width: 13px; height: 3px; border-radius: 2px; display: inline-block; }
+.swatch.dot { width: 9px; height: 9px; border-radius: 50%; }
+
+/* ------------------------------------------------------------------- misc */
+.callout {
+  border-left: 2px solid var(--s1); padding: 0.15rem 0 0.15rem 1.15rem;
+  color: var(--ink-2);
+}
+.callout.warn { border-left-color: var(--s3); }
+.pipeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.pipeline li {
+  display: grid; grid-template-columns: 2.2rem 1fr; gap: 0 0.9rem;
+  padding: 0.6rem 0; border-bottom: 1px solid var(--rule); align-items: baseline;
+}
+.pipeline li:last-child { border-bottom: none; }
+.pipeline .step {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: var(--step--1); color: var(--muted);
+}
+.pipeline b { font-weight: 600; }
+code {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 0.9em; background: var(--sunk); padding: 0.1em 0.36em; border-radius: 3px;
+}
+footer {
+  border-top: 1px solid var(--rule); padding-top: 1.4rem;
+  font-size: var(--step--1); color: var(--muted);
+}
+@media (prefers-reduced-motion: no-preference) {
+  a { transition: color 120ms ease; }
+}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">Benchmark report &middot; finger PPG at rest</p>
+      <h1>Beat Detectors at the PRV Floor</h1>
+    </div>
+    <p class="lede">
+      Five photoplethysmography beat detectors, run end-to-end against a synchronous ECG
+      gold standard and scored on the errors that matter for pulse rate variability.
+      Across 13,859 reference beats, <strong>beat-detection F1 spanned 0.7 percentage
+      points while the RMSSD error it is supposed to predict spanned a factor of
+      nine</strong> &mdash; and the best detector's beat-to-beat timing error was
+      indistinguishable from the physiological floor beneath it.
+    </p>
+    <div class="provenance">
+      <span>PhysioNet Pulse&nbsp;Transit&nbsp;Time&nbsp;PPG v1.1.0</span>
+      <span>22 subjects &middot; 22 records &middot; ~9 min each</span>
+      <span>pleth_6, 537&nbsp;nm, proximal phalanx</span>
+      <span>100&nbsp;Hz pipeline / 500&nbsp;Hz ECG reference</span>
+    </div>
+  </header>
+
+  <section class="verdicts">
+    <div class="verdict">
+      <span class="v">6.92<span class="unit"> ms</span></span>
+      <span class="k">PRV floor (IBI RMSE). The best detector matched it to +0.00 ms.</span>
+    </div>
+    <div class="verdict">
+      <span class="v warn">8.9&times;</span>
+      <span class="k">Spread in RMSSD error across detectors, at 0.993&times; spread in F1.</span>
+    </div>
+    <div class="verdict">
+      <span class="v warn">11&times;</span>
+      <span class="k">RMSSD error penalty from choosing the systolic apex as the fiducial.</span>
+    </div>
+    <div class="verdict">
+      <span class="v">6.1<span class="unit"> ms</span></span>
+      <span class="k">IBI RMSE held flat from 500&nbsp;Hz down to 25&nbsp;Hz by sub-sample interpolation.</span>
+    </div>
+  </section>
+
+  <!-- ================================================================ why -->
+  <section class="col">
+    <p class="eyebrow">Why this benchmark exists</p>
+    <h2>F1 is measured; RMSSD is what people use</h2>
+    <p>
+      The standard open benchmarks for PPG beat detection &mdash; Charlton et al.
+      <a href="https://doi.org/10.1088/1361-6579/ac826d">2022</a> and
+      <a href="https://doi.org/10.1088/1361-6579/adb89e">2025</a> above all &mdash; report
+      beat-detection F1 and heart-rate MAPE. Almost none report beat-to-beat interval RMSE,
+      or the error in the HRV indices that actually get consumed downstream.
+    </p>
+    <p>
+      That gap is not cosmetic. F1 is scored with a &plusmn;150&nbsp;ms matching tolerance,
+      which is roughly five times a typical resting RMSSD. A detector can place every beat
+      inside that window &mdash; scoring a flawless F1 &mdash; while its intervals are
+      useless for the successive-difference metrics that clinical and consumer PRV depends
+      on. This benchmark closes the gap for one well-defined regime: <b>finger PPG,
+      seated, 100&nbsp;Hz</b>.
+    </p>
+  </section>
+
+  <!-- ============================================================ headline -->
+  <section class="panel">
+    <div class="col">
+      <p class="eyebrow">The headline</p>
+      <h2>F1 saturates before it can rank anything</h2>
+      <p>
+        At rest on clean finger PPG every detector lands within a fraction of a percentage
+        point of every other. The metric has no dynamic range left to separate them, while
+        the error that matters spreads across most of an order of magnitude.
+      </p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 720 250" role="img" aria-label="Two dot plots comparing beat-detection F1 with RMSSD error for six detectors in the same order. F1 is clustered between 99.2 and 99.9 percent; RMSSD error spreads from 1.6 to 14.0 milliseconds.">
+        <text class="panel-title" x="150" y="22">Beat-detection F1</text>
+        <text class="panel-title" x="450" y="22">RMSSD absolute error</text>
+
+        <!-- Panel A axis: 99.0 to 100.0 % -->
+        <line class="ax-line" x1="150" y1="212" x2="400" y2="212"/>
+        <line class="grid-line" x1="150" y1="40" x2="150" y2="212"/>
+        <line class="grid-line" x1="275" y1="40" x2="275" y2="212"/>
+        <line class="grid-line" x1="400" y1="40" x2="400" y2="212"/>
+        <text class="ax-text" x="150" y="228" text-anchor="middle">99.0</text>
+        <text class="ax-text" x="275" y="228" text-anchor="middle">99.5</text>
+        <text class="ax-text" x="400" y="228" text-anchor="middle">100.0</text>
+        <text class="ax-text" x="275" y="244" text-anchor="middle">percent</text>
+
+        <!-- Panel B axis: 0 to 15 ms -->
+        <line class="ax-line" x1="450" y1="212" x2="700" y2="212"/>
+        <line class="grid-line" x1="450" y1="40" x2="450" y2="212"/>
+        <line class="grid-line" x1="533" y1="40" x2="533" y2="212"/>
+        <line class="grid-line" x1="617" y1="40" x2="617" y2="212"/>
+        <line class="grid-line" x1="700" y1="40" x2="700" y2="212"/>
+        <text class="ax-text" x="450" y="228" text-anchor="middle">0</text>
+        <text class="ax-text" x="533" y="228" text-anchor="middle">5</text>
+        <text class="ax-text" x="617" y="228" text-anchor="middle">10</text>
+        <text class="ax-text" x="700" y="228" text-anchor="middle">15</text>
+        <text class="ax-text" x="575" y="244" text-anchor="middle">milliseconds</text>
+
+        <!-- rows -->
+        <g>
+          <text class="row-text" x="140" y="56"  text-anchor="end">MSPTDfast v2</text>
+          <circle cx="380"   cy="52" r="5" fill="var(--s2)"/>
+          <circle cx="476.2" cy="52" r="5" fill="var(--s1)"/>
+          <text class="val-text" x="486" y="56">1.57</text>
+        </g>
+        <g>
+          <text class="row-text" x="140" y="86"  text-anchor="end">MSPTD</text>
+          <circle cx="375" cy="82" r="5" fill="var(--s2)"/>
+          <circle cx="481" cy="82" r="5" fill="var(--s1)"/>
+          <text class="val-text" x="491" y="86">1.86</text>
+        </g>
+        <g>
+          <text class="row-text" x="140" y="116" text-anchor="end">find_peaks baseline</text>
+          <circle cx="370"   cy="112" r="5" fill="var(--s2)"/>
+          <circle cx="488.2" cy="112" r="5" fill="var(--s1)"/>
+          <text class="val-text" x="498" y="116">2.29</text>
+        </g>
+        <g>
+          <text class="row-text" x="140" y="146" text-anchor="end">TERMA</text>
+          <circle cx="370" cy="142" r="5" fill="var(--s2)"/>
+          <circle cx="505" cy="142" r="5" fill="var(--s1)"/>
+          <text class="val-text" x="515" y="146">3.30</text>
+        </g>
+        <g>
+          <text class="row-text" x="140" y="176" text-anchor="end">HeartPy</text>
+          <circle cx="355"   cy="172" r="5" fill="var(--s2)"/>
+          <circle cx="525.3" cy="172" r="5" fill="var(--s1)"/>
+          <text class="val-text" x="535" y="176">4.52</text>
+        </g>
+        <g>
+          <text class="row-text" x="140" y="206" text-anchor="end">qppg (slope-sum)</text>
+          <circle cx="202.5" cy="202" r="5" fill="var(--s2)"/>
+          <circle cx="683"   cy="202" r="5" fill="var(--s3)"/>
+          <text class="val-text" x="676" y="206" text-anchor="end">13.98</text>
+        </g>
+      </svg>
+      <figcaption>
+        Median across 22 records, Lipponen&ndash;Tarvainen correction. Same detector order in
+        both panels; the scales are separate because the quantities are unrelated. The
+        left panel is the metric the literature reports, the right panel is the metric a
+        user experiences.
+      </figcaption>
+    </figure>
+
+    <div class="scroll">
+      <table>
+        <caption>Discriminative power &mdash; best-to-worst spread across the six detectors.</caption>
+        <thead>
+          <tr><th>Metric</th><th class="n">Best</th><th class="n">Worst</th><th class="n">Spread</th><th class="n">CV</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">Beat-detection F1</td><td class="n">99.92&thinsp;%</td><td class="n">99.21&thinsp;%</td><td class="n">0.99&times;</td><td class="n">0.28&thinsp;%</td></tr>
+          <tr><td class="name">IBI RMSE</td><td class="n">6.92&thinsp;ms</td><td class="n">7.28&thinsp;ms</td><td class="n">1.05&times;</td><td class="n">2.11&thinsp;%</td></tr>
+          <tr class="worst"><td class="name">RMSSD error</td><td class="n">1.57&thinsp;ms</td><td class="n">13.98&thinsp;ms</td><td class="n">8.92&times;</td><td class="n">103.07&thinsp;%</td></tr>
+          <tr><td class="name">SDNN error</td><td class="n">0.95&thinsp;ms</td><td class="n">4.27&thinsp;ms</td><td class="n">4.49&times;</td><td class="n">61.82&thinsp;%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- =============================================================== floor -->
+  <section class="panel">
+    <div class="col">
+      <p class="eyebrow">The floor</p>
+      <h2>The detector contributes essentially nothing</h2>
+      <p>
+        A constant pulse arrival time cancels inside an interval, so whatever
+        PPI&nbsp;&minus;&nbsp;RRI error remains is detector jitter <em>combined with</em>
+        beat-to-beat variation in pulse arrival time &mdash; physiology, not a bug.
+        Separating the two needs an estimate of the irreducible part: the median interval
+        across all six detectors, keyed per reference beat, forms a consensus fiducial
+        whose residual error is dominated by the physiology rather than by any one
+        algorithm.
+      </p>
+      <p class="callout">
+        That consensus floor came to <b>6.92&nbsp;ms RMSE</b>. The best detector's IBI RMSE
+        was <b>6.92&nbsp;ms</b> &mdash; an excess over the floor of <b>+0.00&nbsp;ms</b>,
+        with the whole field inside 0.36&nbsp;ms of it. On resting finger PPG the choice
+        of beat detector adds nothing measurable to interval timing error. The ~7&nbsp;ms
+        is the gap between pulse rate variability and heart rate variability, and no
+        better algorithm closes it.
+      </p>
+      <p>
+        This is an estimate rather than ground truth: it assumes detector errors are
+        independent enough for the median to cancel them. It is the reason the leaderboard
+        below is worth reading for its HRV columns and not its IBI column.
+      </p>
+    </div>
+  </section>
+
+  <!-- ========================================================= leaderboard -->
+  <section class="panel">
+    <div class="col">
+      <p class="eyebrow">Leaderboard</p>
+      <h2>Ranking depends on the repair stage, not the detector</h2>
+      <p>
+        Both source reports name artifact correction as the single largest lever on HRV
+        accuracy. That is correct &mdash; and it is a stronger effect than they suggest.
+        Swapping the correction stage reorders the table completely.
+      </p>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <caption>
+          Median across 22 records at 100&thinsp;% coverage. Two correction strategies,
+          same detectors, same signals. Green marks the best cell in a column pair;
+          red marks the failure.
+        </caption>
+        <thead>
+          <tr>
+            <th>Detector</th>
+            <th class="n">F1</th>
+            <th class="n">IBI RMSE<br><span class="unit">Lipponen&ndash;Tarv.</span></th>
+            <th class="n">IBI RMSE<br><span class="unit">median/MAD</span></th>
+            <th class="n">RMSSD err<br><span class="unit">Lipponen&ndash;Tarv.</span></th>
+            <th class="n">RMSSD err<br><span class="unit">median/MAD</span></th>
+            <th class="n">Cost<br><span class="unit">s / min</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="best">
+            <td class="name">MSPTDfast v2</td><td class="n">99.92</td>
+            <td class="n">7.15</td><td class="n">6.06</td>
+            <td class="n">1.57</td><td class="n">2.40</td><td class="n">0.02</td>
+          </tr>
+          <tr>
+            <td class="name">MSPTD</td><td class="n">99.90</td>
+            <td class="n">6.92</td><td class="n">6.06</td>
+            <td class="n">1.86</td><td class="n">1.96</td><td class="n">0.89</td>
+          </tr>
+          <tr>
+            <td class="name">TERMA</td><td class="n">99.88</td>
+            <td class="n">7.05</td><td class="n">6.08</td>
+            <td class="n">3.30</td><td class="n">2.44</td><td class="n">0.00</td>
+          </tr>
+          <tr>
+            <td class="name">HeartPy</td><td class="n">99.82</td>
+            <td class="n">7.28</td><td class="n">6.09</td>
+            <td class="n">4.52</td><td class="n">2.09</td><td class="n">0.02</td>
+          </tr>
+          <tr class="worst">
+            <td class="name">qppg (slope-sum)</td><td class="n">99.21</td>
+            <td class="n">7.26</td><td class="n">5.99</td>
+            <td class="n">13.98</td><td class="n">2.11</td><td class="n">0.00</td>
+          </tr>
+          <tr>
+            <td class="name">find_peaks baseline</td><td class="n">99.88</td>
+            <td class="n">6.96</td><td class="n">6.30</td>
+            <td class="n">2.29</td><td class="n">2.40</td><td class="n">0.00</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <p>
+        Read the qppg row. Under the Kubios-style Lipponen&ndash;Tarvainen correction that
+        both reports recommend as the default, its RMSSD error is 13.98&nbsp;ms &mdash; the
+        worst in the field by a factor of nine. Under a plain local median/MAD rule the
+        same detector, on the same signal, posts <b>2.11&nbsp;ms</b> and the best IBI RMSE
+        of any detector tested. The apparent quality of a detector is not separable from
+        what repairs its mistakes.
+      </p>
+      <p>
+        The mechanism is specific. qppg misses roughly 4&thinsp;% of beats; each miss
+        leaves a doubled interval that passes any plausible physiological screen at
+        70&nbsp;bpm, and each doubled interval corrupts two successive differences. Three
+        such intervals in 582 inflated one record's RMSSD from 30&nbsp;ms to 88&nbsp;ms.
+      </p>
+      <p class="callout warn">
+        Lipponen&ndash;Tarvainen did not repair them. On a controlled synthetic series with
+        three deliberately deleted beats the same NeuroKit2 implementation inserts all
+        three correctly, so this is not a wiring fault &mdash; on real data at realistic
+        variability its relative thresholds let the doubled intervals through. It also
+        <em>raised</em> IBI RMSE for every detector (6.06&nbsp;&rarr;&nbsp;6.92&thinsp;ms
+        and worse), because replacing beats at interpolated positions moves them away
+        from the true ECG beats. Treat this as an observation about one implementation on
+        one dataset, not a refutation of the method &mdash; Kubios's own implementation
+        may differ.
+      </p>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <caption>
+          Correction is nonetheless the largest single lever &mdash; median RMSSD absolute
+          error, by strategy.
+        </caption>
+        <thead>
+          <tr><th>Detector</th><th class="n">No correction</th><th class="n">Lipponen&ndash;Tarv.</th><th class="n">median/MAD</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">MSPTD</td><td class="n">1.96</td><td class="n">1.86</td><td class="n">1.96</td></tr>
+          <tr><td class="name">MSPTDfast v2</td><td class="n">3.47</td><td class="n">1.57</td><td class="n">2.40</td></tr>
+          <tr><td class="name">TERMA</td><td class="n">3.33</td><td class="n">3.30</td><td class="n">2.44</td></tr>
+          <tr><td class="name">find_peaks baseline</td><td class="n">3.82</td><td class="n">2.29</td><td class="n">2.40</td></tr>
+          <tr class="worst"><td class="name">HeartPy</td><td class="n">22.68</td><td class="n">4.52</td><td class="n">2.09</td></tr>
+          <tr class="worst"><td class="name">qppg (slope-sum)</td><td class="n">23.81</td><td class="n">13.98</td><td class="n">2.11</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ======================================================== E1 fiducial -->
+  <section class="panel">
+    <div class="col">
+      <p class="eyebrow">Experiment E1 &middot; fiducial point</p>
+      <h2>The systolic apex is a catastrophic place to measure</h2>
+      <p>
+        Peralta et al. (2019) found the mid-amplitude point, the first-derivative apex and
+        the tangent intersection superior to the apex and the foot. On this data the effect
+        is far larger than that literature suggests &mdash; the apex is not merely
+        second-best, it is unusable.
+      </p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 720 220" role="img" aria-label="Bar chart of interbeat interval RMSE by fiducial point. Mid-upslope 6.06, max slope 6.87, foot 7.09, systolic peak 29.67 milliseconds.">
+        <line class="ax-line" x1="150" y1="182" x2="700" y2="182"/>
+        <line class="grid-line" x1="150" y1="20" x2="150" y2="182"/>
+        <line class="grid-line" x1="287" y1="20" x2="287" y2="182"/>
+        <line class="grid-line" x1="425" y1="20" x2="425" y2="182"/>
+        <line class="grid-line" x1="562" y1="20" x2="562" y2="182"/>
+        <line class="grid-line" x1="700" y1="20" x2="700" y2="182"/>
+        <text class="ax-text" x="150" y="198" text-anchor="middle">0</text>
+        <text class="ax-text" x="287" y="198" text-anchor="middle">8</text>
+        <text class="ax-text" x="425" y="198" text-anchor="middle">16</text>
+        <text class="ax-text" x="562" y="198" text-anchor="middle">24</text>
+        <text class="ax-text" x="700" y="198" text-anchor="middle">32</text>
+        <text class="ax-text" x="425" y="214" text-anchor="middle">interbeat-interval RMSE (ms)</text>
+
+        <text class="row-text" x="140" y="38"  text-anchor="end">mid-upslope</text>
+        <rect x="150" y="26" width="104.2" height="20" rx="3" fill="var(--s1)"/>
+        <text class="val-text" x="262" y="41">6.06</text>
+
+        <text class="row-text" x="140" y="76"  text-anchor="end">max dP/dt</text>
+        <rect x="150" y="64" width="118.2" height="20" rx="3" fill="var(--s1)"/>
+        <text class="val-text" x="276" y="79">6.87</text>
+
+        <text class="row-text" x="140" y="114" text-anchor="end">foot / onset</text>
+        <rect x="150" y="102" width="121.9" height="20" rx="3" fill="var(--s1)"/>
+        <text class="val-text" x="280" y="117">7.09</text>
+
+        <text class="row-text" x="140" y="152" text-anchor="end">systolic peak</text>
+        <rect x="150" y="140" width="510.2" height="20" rx="3" fill="var(--s3)"/>
+        <text class="val-text" x="668" y="155">29.67</text>
+      </svg>
+      <figcaption>
+        MSPTDfast v2, no correction, median across 22 records. RMSSD error follows the same
+        ordering far more steeply: 3.47&nbsp;ms at the mid-upslope against
+        <b>91.12&nbsp;ms</b> at the apex, a 26&times; penalty.
+      </figcaption>
+    </figure>
+
+    <div class="col">
+      <p>
+        The apex of a PPG pulse is broad and flat, so its <em>argmax</em> wanders with
+        noise; the systolic upslope is steep and its half-amplitude crossing is
+        well-conditioned. The winner &mdash; the mid-upslope &mdash; is MSPTDfast v2's own
+        published fiducial, which vindicates that design choice. The compass report's
+        recommendation to use the maximum of the first derivative lands second, not first.
+      </p>
+    </div>
+  </section>
+
+  <!-- ======================================================== E2 sampling -->
+  <section class="panel">
+    <div class="col">
+      <p class="eyebrow">Experiment E2 &middot; sampling rate</p>
+      <h2>Sub-sample interpolation erases the sample grid</h2>
+      <p>
+        At the 100&nbsp;Hz operating rate one sample is 10&nbsp;ms &mdash; the same order as
+        the RMSSD being measured. Placing a beat on that grid is uniform quantisation with
+        timing SD&nbsp;=&nbsp;T/&radic;12, and an interval is the difference of two
+        independently quantised beats, scaling that by &radic;2. Adding the measured floor
+        in quadrature gives a prediction with no fitted parameters.
+      </p>
+    </div>
+
+    <figure>
+      <svg viewBox="0 0 720 300" role="img" aria-label="Line chart of interbeat interval RMSE against sampling rate. Without sub-sample interpolation error rises from 6.1 milliseconds at 500 Hz to 17.7 at 25 Hz, tracking quantisation theory. With interpolation it stays flat near 6.1 milliseconds at every rate.">
+        <line class="ax-line" x1="80" y1="240" x2="680" y2="240"/>
+        <line class="ax-line" x1="80" y1="40" x2="80" y2="240"/>
+        <line class="grid-line" x1="80" y1="195" x2="680" y2="195"/>
+        <line class="grid-line" x1="80" y1="150" x2="680" y2="150"/>
+        <line class="grid-line" x1="80" y1="105" x2="680" y2="105"/>
+        <line class="grid-line" x1="80" y1="60"  x2="680" y2="60"/>
+        <text class="ax-text" x="70" y="244" text-anchor="end">0</text>
+        <text class="ax-text" x="70" y="199" text-anchor="end">5</text>
+        <text class="ax-text" x="70" y="154" text-anchor="end">10</text>
+        <text class="ax-text" x="70" y="109" text-anchor="end">15</text>
+        <text class="ax-text" x="70" y="64"  text-anchor="end">20</text>
+        <text class="ax-text" x="26" y="150" text-anchor="middle" transform="rotate(-90 26 150)">IBI RMSE (ms)</text>
+
+        <text class="ax-text" x="80"  y="258" text-anchor="middle">25</text>
+        <text class="ax-text" x="114" y="258" text-anchor="middle">30</text>
+        <text class="ax-text" x="210" y="258" text-anchor="middle">50</text>
+        <text class="ax-text" x="339" y="258" text-anchor="middle">100</text>
+        <text class="ax-text" x="640" y="258" text-anchor="middle">500</text>
+        <text class="ax-text" x="380" y="276" text-anchor="middle">sampling rate (Hz, log scale)</text>
+
+        <!-- quantisation prediction -->
+        <polyline fill="none" stroke="var(--s3)" stroke-width="2" stroke-dasharray="5 4"
+                  points="80,83 114,106 210,148 339,174 640,185"/>
+        <!-- measured, no interpolation -->
+        <polyline fill="none" stroke="var(--s2)" stroke-width="2"
+                  points="80,81 114,107 210,149 339,174 640,185"/>
+        <circle cx="80"  cy="81"  r="4.5" fill="var(--s2)"/>
+        <circle cx="114" cy="107" r="4.5" fill="var(--s2)"/>
+        <circle cx="210" cy="149" r="4.5" fill="var(--s2)"/>
+        <circle cx="339" cy="174" r="4.5" fill="var(--s2)"/>
+        <circle cx="640" cy="185" r="4.5" fill="var(--s2)"/>
+        <text class="val-text" x="92" y="74">17.66</text>
+        <text class="val-text" x="349" y="170">7.34</text>
+
+        <!-- measured, with sub-sample interpolation -->
+        <polyline fill="none" stroke="var(--s1)" stroke-width="2.5"
+                  points="80,185 114,185 210,185 339,186 640,185"/>
+        <circle cx="80"  cy="185" r="4.5" fill="var(--s1)"/>
+        <circle cx="114" cy="185" r="4.5" fill="var(--s1)"/>
+        <circle cx="210" cy="185" r="4.5" fill="var(--s1)"/>
+        <circle cx="339" cy="186" r="4.5" fill="var(--s1)"/>
+        <circle cx="640" cy="185" r="4.5" fill="var(--s1)"/>
+        <text class="val-text" x="352" y="203">6.06&ndash;6.17 at every rate</text>
+      </svg>
+      <figcaption class="legend">
+        <span><i class="swatch" style="background:var(--s1)"></i> measured, with sub-sample interpolation</span>
+        <span><i class="swatch" style="background:var(--s2)"></i> measured, on the sample grid</span>
+        <span><i class="swatch" style="background:var(--s3)"></i> quantisation prediction (no fitted parameters)</span>
+      </figcaption>
+    </figure>
+
+    <div class="scroll">
+      <table>
+        <caption>Prediction against measurement. Largest residual across the whole range: 0.24&nbsp;ms.</caption>
+        <thead>
+          <tr><th class="n">Rate</th><th class="n">Step</th><th class="n">Predicted</th><th class="n">Measured</th><th class="n">Residual</th><th class="n">With interpolation</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="n">25 Hz</td><td class="n">40.00 ms</td><td class="n">17.42</td><td class="n">17.66</td><td class="n">&minus;0.24</td><td class="n">6.17</td></tr>
+          <tr><td class="n">30 Hz</td><td class="n">33.33 ms</td><td class="n">14.90</td><td class="n">14.83</td><td class="n">+0.06</td><td class="n">6.15</td></tr>
+          <tr><td class="n">50 Hz</td><td class="n">20.00 ms</td><td class="n">10.17</td><td class="n">10.13</td><td class="n">+0.04</td><td class="n">6.17</td></tr>
+          <tr class="best"><td class="n">100 Hz</td><td class="n">10.00 ms</td><td class="n">7.30</td><td class="n">7.34</td><td class="n">&minus;0.04</td><td class="n">6.06</td></tr>
+          <tr><td class="n">500 Hz</td><td class="n">2.00 ms</td><td class="n">6.11</td><td class="n">6.14</td><td class="n">&minus;0.03</td><td class="n">6.07</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <p>
+        Two consequences. First, the 100&nbsp;Hz operating point costs nothing: with
+        sub-sample refinement it matches the 500&nbsp;Hz diagnostic ceiling to within
+        0.01&nbsp;ms. Second, the degradation without interpolation is <em>entirely</em>
+        quantisation &mdash; the theory predicts every point to within a quarter of a
+        millisecond, which means nothing else about low-rate sampling is hurting the
+        measurement.
+      </p>
+      <p>
+        This also sharpens the compass report's smartphone claim. It puts a
+        &plusmn;16.6&nbsp;ms ambiguity and a 16&ndash;20&nbsp;ms PRV floor on 30&nbsp;fps
+        camera PPG that &ldquo;no amount of interpolation can completely recover.&rdquo;
+        The quantisation arithmetic is right &mdash; 14.83&nbsp;ms measured here at
+        30&nbsp;Hz &mdash; but the conclusion is not: interpolation recovered it to
+        6.15&nbsp;ms. For <em>contact</em> PPG the 30&nbsp;fps floor is a solved problem.
+        Camera PPG may still be floored by its far worse SNR, which this dataset cannot
+        speak to.
+      </p>
+    </div>
+  </section>
+
+  <!-- ========================================================== E4 motion -->
+  <section class="panel">
+    <div class="col">
+      <p class="eyebrow">Experiment E4 &middot; residual motion</p>
+      <h2>Even &ldquo;sitting still&rdquo; is not one condition</h2>
+      <p>
+        The records are all seated, but the gyroscope shares their clock, so the resting
+        data can be split by how still the subject actually was.
+      </p>
+    </div>
+    <div class="scroll">
+      <table>
+        <caption>22 resting records split into terciles by 90th-percentile gyroscope power.</caption>
+        <thead>
+          <tr><th>Tercile</th><th class="n">Gyro p90</th><th class="n">F1</th><th class="n">IBI RMSE</th><th class="n">RMSSD error</th></tr>
+        </thead>
+        <tbody>
+          <tr class="best"><td class="name">Stillest</td><td class="n">0.008</td><td class="n">99.9&thinsp;%</td><td class="n">6.04 ms</td><td class="n">2.41 ms</td></tr>
+          <tr><td class="name">Middle</td><td class="n">0.014</td><td class="n">99.8&thinsp;%</td><td class="n">6.02 ms</td><td class="n">6.57 ms</td></tr>
+          <tr class="worst"><td class="name">Most motion</td><td class="n">0.042</td><td class="n">99.7&thinsp;%</td><td class="n">7.28 ms</td><td class="n">27.37 ms</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="col">
+      <p>
+        RMSSD error rises <b>11&times;</b> across terciles while F1 moves by two-tenths of a
+        percentage point. Rank correlation with gyroscope power is significant for RMSSD
+        error (&rho;&nbsp;=&nbsp;+0.43, p&nbsp;=&nbsp;0.045) and not for F1
+        (&rho;&nbsp;=&nbsp;&minus;0.31, p&nbsp;=&nbsp;0.16). The same saturation appears
+        again: the metric the field reports is blind to the thing that degrades the output.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================== errata -->
+  <section class="panel">
+    <div class="col">
+      <p class="eyebrow">Fact-check</p>
+      <h2>What the source reports got wrong</h2>
+      <p>
+        Both reports were checked against primary sources. Their shared core
+        recommendation &mdash; MSPTDfast v2, a mid-upslope fiducial, explicit quality
+        gating, conservative beat correction &mdash; survives, and E1 and the leaderboard
+        support it. Seven claims did not survive.
+      </p>
+    </div>
+
+    <div class="errata">
+      <div class="erratum">
+        <span class="idx">01</span>
+        <div>
+          <p class="claim">&ldquo;RMSSD and HF power are systematically overestimated by PPG-derived PRV.&rdquo;</p>
+          <p class="fix">The sign is inverted. The largest study either report cites
+            (Kantrowitz et al. 2025, n&nbsp;=&nbsp;931) found PRV <em>under</em>estimates:
+            SDNN &minus;13.1&nbsp;ms, rMSSD &minus;5.6&nbsp;ms, pNN50 &minus;3.9&nbsp;%,
+            all p&nbsp;&lt;&nbsp;0.00001. The direction is context-dependent, not systematic.</p>
+          <p class="src">compass report &middot; Key Findings</p>
+        </div>
+      </div>
+      <div class="erratum">
+        <span class="idx">02</span>
+        <div>
+          <p class="claim">&ldquo;RMSSD bias 3&ndash;4&nbsp;ms and SDNN bias 7&ndash;12&nbsp;ms.&rdquo;</p>
+          <p class="fix">Attributed to the same study, whose published overall biases are
+            &minus;5.6&nbsp;ms and &minus;13.1&nbsp;ms.</p>
+          <p class="src">compass report &middot; &sect;3</p>
+        </div>
+      </div>
+      <div class="erratum">
+        <span class="idx">03</span>
+        <div>
+          <p class="claim">Kantrowitz cited as evidence about finger and wrist PPG.</p>
+          <p class="fix">That study used an <b>upper-arm/bicep armband</b>. Neither report
+            says so, which materially weakens it as evidence for the measurement sites they
+            are actually discussing.</p>
+          <p class="src">both reports</p>
+        </div>
+      </div>
+      <div class="erratum">
+        <span class="idx">04</span>
+        <div>
+          <p class="claim">A &ldquo;43-study meta-analysis&rdquo; and &ldquo;Xu et al. 2026 systematic review&rdquo; cited as two independent sources.</p>
+          <p class="fix">They are the same paper (<em>Sensors</em> 26:5192). Neither report
+            noticed. Its pooled estimate also rests on the 10 studies with sufficient data,
+            not 43, which is the qualitative-synthesis count.</p>
+          <p class="src">compass report &sect;3 / German report &sect;Quellenlage</p>
+        </div>
+      </div>
+      <div class="erratum">
+        <span class="idx">05</span>
+        <div>
+          <p class="claim">&ldquo;Upsample the PPG (cubic spline to &ge;250&nbsp;Hz) <em>before</em> fiducial detection. Detect beats with MSPTDfast.&rdquo;</p>
+          <p class="fix">Self-defeating: MSPTDfast's entire speed advantage is downsampling
+            to 20&nbsp;Hz internally. Detect at the low rate, refine the fiducial against
+            the high-rate grid. E2 shows the refinement is what carries the accuracy anyway.</p>
+          <p class="src">compass report &middot; Recommended pipeline, steps 3&ndash;4</p>
+        </div>
+      </div>
+      <div class="erratum">
+        <span class="idx">06</span>
+        <div>
+          <p class="claim">&ldquo;Locate the fiducial at the maximum of the first derivative.&rdquo;</p>
+          <p class="fix">Sound advice, but second-best and presented as settled. MSPTDfast v2
+            as published emits a mid-upslope point, and E1 measures that as better:
+            6.06&nbsp;ms against 6.87&nbsp;ms IBI RMSE. The pairing the report recommends is
+            not a published configuration.</p>
+          <p class="src">compass report &middot; Recommended pipeline, step 4</p>
+        </div>
+      </div>
+      <div class="erratum">
+        <span class="idx">07</span>
+        <div>
+          <p class="claim">Lipponen&ndash;Tarvainen recommended as the default correction.</p>
+          <p class="fix">The strongest claim in either report about correction is right in
+            direction and wrong in specifics. Correction is the largest lever &mdash; qppg's
+            RMSSD error falls from 23.81&nbsp;ms to 2.11&nbsp;ms &mdash; but the recommended
+            method was beaten by a plain local median/MAD rule on every detector's IBI RMSE
+            and on four of six RMSSD errors, and it failed outright on the missed-beat case.</p>
+          <p class="src">both reports &middot; measured here, see leaderboard</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <p>
+        Also flagged and not relied upon: the PPG-PT transformer's F1&nbsp;98.04&nbsp;%, all
+        smartphone-camera figures, Huang's DAG result, and Watanabe's claimed
+        &ldquo;145&nbsp;ms PRV error reduction,&rdquo; which is implausibly large. Confirmed
+        against primary sources: MSPTDfast v2's design parameters and F1 scores, its
+        5.3&ndash;35.9&nbsp;% execution time, the Charlton 2022 benchmark structure,
+        Peralta's fiducial ranking, and the Xu pooled errors.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================== method -->
+  <section class="panel">
+    <div class="col">
+      <p class="eyebrow">Method</p>
+      <h2>How it was measured</h2>
+      <p>
+        Every approach is a full pipeline, not a detector. Only the detector stage differs,
+        so differences are attributable.
+      </p>
+    </div>
+    <ol class="pipeline col">
+      <li><span class="step">01</span><span><b>Decimate</b> 500&nbsp;&rarr;&nbsp;100&nbsp;Hz, anti-aliased, DC removed first.</span></li>
+      <li><span class="step">02</span><span><b>Band-pass</b> 0.5&ndash;8&nbsp;Hz, 4th-order Butterworth, zero-phase.</span></li>
+      <li><span class="step">03</span><span><b>Detect</b> beats &mdash; the stage under test.</span></li>
+      <li><span class="step">04</span><span><b>Locate the fiducial</b> and refine it below the sample grid.</span></li>
+      <li><span class="step">05</span><span><b>Gate on quality</b> &mdash; skewness SQI, swept across coverage levels.</span></li>
+      <li><span class="step">06</span><span><b>Correct intervals</b> &mdash; none, median/MAD, or Lipponen&ndash;Tarvainen.</span></li>
+      <li><span class="step">07</span><span><b>Compute HRV</b> &mdash; time, frequency (Welch and Lomb&ndash;Scargle), non-linear.</span></li>
+    </ol>
+    <div class="col">
+      <p>
+        Beats are matched to the ECG annotations one-to-one within &plusmn;150&nbsp;ms after
+        removing a per-record constant pulse arrival time (median 274&nbsp;ms, range
+        234&ndash;315&nbsp;ms). Intervals count only where beats are consecutive in
+        <em>both</em> series, so a missed beat is scored as a detection failure rather than
+        smuggled in as a timing failure. Coverage is swept at 100 / 90 / 75 / 50&thinsp;%
+        and the leaderboard is read at matched coverage, so no detector can win by
+        abstaining on the hard segments.
+      </p>
+      <p>
+        Two defects surfaced in QC that would each have produced a plausible-looking but
+        wrong benchmark. The raw channels are <b>transmission pulse oximetry and arrive
+        inverted</b> &mdash; more blood means a lower sample value &mdash; so every fiducial
+        would have landed on the diastolic decay while F1 still looked fine; polarity is now
+        detected automatically from first-derivative skew and confirmed against morphology
+        and physiological PAT on all 22 records. And <code>scipy.signal.decimate</code>
+        <b>explodes on the ~74,000 DC pedestal</b>, producing an edge transient 44 standard
+        deviations tall that swamped every amplitude threshold and made four of the six
+        detectors return zero beats.
+      </p>
+    </div>
+  </section>
+
+  <!-- ========================================================= limitations -->
+  <section class="panel">
+    <div class="col">
+      <p class="eyebrow">Scope</p>
+      <h2>What this does not show</h2>
+      <p>
+        22 healthy adults, mean age 28.5, finger PPG, seated, high SNR, mean heart rate
+        54&ndash;121&nbsp;bpm, reference SDNN 18&ndash;127&nbsp;ms. This is a
+        <em>favourable</em> case and the numbers are an upper bound, not a free-living
+        expectation.
+      </p>
+      <p>
+        Nothing here transfers automatically to wrist PPG, ambulatory recording, camera
+        PPG, arrhythmia, or clinical populations. The finding that detector choice is
+        irrelevant is a finding <em>about this regime</em>: it is precisely where the
+        published F1 tables are all clustered above 99&thinsp;%, and the same detectors
+        separate sharply under exercise in Charlton's own benchmark. Where beats are hard
+        to find, finding them is the problem; where they are easy, everything downstream is.
+      </p>
+      <p>
+        <code>pyPPG</code> (Aboy++), which one source report rates the strongest
+        alternative, is absent: it pins Python&nbsp;3.10 with numpy&nbsp;1.23 and will not
+        install alongside this stack.
+      </p>
+      <p><b>PRV is not HRV.</b> Results are reported as pulse rate variability throughout.</p>
+    </div>
+  </section>
+
+  <footer class="col">
+    <p>
+      660 pipeline runs over 22 records and 13,859 reference beats. Data:
+      <a href="https://physionet.org/content/pulse-transit-time-ppg/1.1.0/">PhysioNet Pulse Transit Time PPG v1.1.0</a>
+      (ODbL). Detectors: NeuroKit2 (MSPTDfast v2, MSPTD), HeartPy, and from-scratch NumPy
+      ports of Zong's slope-sum and Elgendi's TERMA. Code and every table reproducible from
+      the repository; unit tests run on a synthetic PPG with known beat times.
+    </p>
+  </footer>
+
+</div>

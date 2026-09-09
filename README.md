@@ -5,6 +5,40 @@ scored on beat-to-beat interval error and HRV endpoint error rather than on beat
 
 [![CI](https://github.com/aphassler/ppg-prv-benchmark/actions/workflows/ci.yml/badge.svg)](https://github.com/aphassler/ppg-prv-benchmark/actions/workflows/ci.yml)
 
+**[Read the full benchmark report &rarr;](https://claude.ai/code/artifact/e6900d88-e0c8-4439-a571-6765d1abfce2)**
+
+## Headline results
+
+Across 22 records and 13,859 reference beats:
+
+| Finding | Number |
+| --- | --- |
+| Consensus **PRV floor** (physiological limit on IBI RMSE) | **6.92 ms** |
+| Best detector's IBI RMSE &mdash; excess over that floor | 6.92 ms &mdash; **+0.00 ms** |
+| Spread in beat-detection **F1** across the six detectors | **0.99x** (99.21&ndash;99.92 %) |
+| Spread in **RMSSD error** across the same six | **8.92x** (1.57&ndash;13.98 ms) |
+| RMSSD error penalty for using the **systolic apex** as fiducial | **26x** (3.47 &rarr; 91.12 ms) |
+| IBI RMSE at 25 Hz **with** sub-sample interpolation | 6.17 ms (vs 17.66 ms without) |
+
+Three things follow.
+
+1. **F1 saturates before it can rank anything.** On resting finger PPG every detector
+   scores within a fraction of a percentage point of every other, while the error a user
+   experiences spans an order of magnitude. The metric the literature reports has no
+   dynamic range left in this regime.
+2. **The detector contributes essentially nothing to interval timing.** The best detector
+   sits *exactly* on the estimated physiological floor. The ~7 ms residual is the gap
+   between pulse rate variability and heart rate variability, and no better algorithm
+   closes it.
+3. **The repair stage decides the ranking.** Swapping Lipponen&ndash;Tarvainen for a plain
+   local median/MAD rule improved IBI RMSE for every detector and cut qppg's RMSSD error
+   from 13.98 ms to 2.11 ms. Correction is the largest lever &mdash; as both source reports
+   claim &mdash; but the method they recommend was beaten by the trivial alternative.
+
+The report also documents **seven errors found in the source research**, including an
+inverted sign on the direction of PRV bias and two reports citing the same paper as two
+independent sources.
+
 ## Why this exists
 
 The published PPG beat-detection benchmarks — Charlton et al.
@@ -40,10 +74,16 @@ published alongside it.
 
 A constant pulse arrival time cancels inside an interval, so the residual PPI−RRI error is
 detector jitter *combined with* beat-to-beat PAT variability — which is physiology, not a bug.
-The benchmark estimates an irreducible **PRV floor** as the element-wise median PPI across
-detectors (a consensus fiducial), and reports each detector's **excess over that floor** as its
-attributable contribution. This is an estimate, labelled as such: it assumes detector errors are
-independent enough for the median to cancel them.
+The benchmark estimates an irreducible **PRV floor** by taking, for each reference interval,
+the median PPI across all detectors that measured that interval — a consensus fiducial — and
+reports each detector's **excess over that floor** as its attributable contribution. Intervals
+are keyed by reference-beat index, never by position: detectors produce different numbers of
+intervals covering different beats, so a positional median averages unrelated heartbeats and
+inflates the floor above every individual detector.
+
+This is an estimate, labelled as such: it assumes detector errors are independent enough for
+the median to cancel them. Measured floor: **6.92 ms RMSE**, which the best detector matched
+to +0.00 ms.
 
 ## The five approaches
 

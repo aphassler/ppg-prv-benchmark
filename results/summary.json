@@ -1,0 +1,149 @@
+{
+  "leaderboard": {
+    "MSPTD": {
+      "n": 22,
+      "f1_pct": 99.9021364383,
+      "ibi_mae_ms": 4.9351953094,
+      "ibi_rmse_ms": 6.9232699267,
+      "rmssd_mae_ms": 1.8616156718,
+      "sdnn_mae_ms": 1.0609791188,
+      "pnn50_mae": 1.2798870969,
+      "lfhf_mae": 0.3475235239,
+      "corrected_pct": 0.0,
+      "cost_s_per_min": 0.8872569953
+    },
+    "find_peaks baseline": {
+      "n": 22,
+      "f1_pct": 99.8849372768,
+      "ibi_mae_ms": 4.940772247,
+      "ibi_rmse_ms": 6.9606724228,
+      "rmssd_mae_ms": 2.290725762,
+      "sdnn_mae_ms": 1.4246013555,
+      "pnn50_mae": 1.2746872752,
+      "lfhf_mae": 0.2504526612,
+      "corrected_pct": 0.0,
+      "cost_s_per_min": 0.0001461069
+    },
+    "TERMA": {
+      "n": 22,
+      "f1_pct": 99.8766024591,
+      "ibi_mae_ms": 4.940772247,
+      "ibi_rmse_ms": 7.0486469776,
+      "rmssd_mae_ms": 3.2958938404,
+      "sdnn_mae_ms": 1.871431267,
+      "pnn50_mae": 1.2383796774,
+      "lfhf_mae": 0.4721692607,
+      "corrected_pct": 0.0,
+      "cost_s_per_min": 0.0004341807
+    },
+    "MSPTDfast v2": {
+      "n": 22,
+      "f1_pct": 99.9160217878,
+      "ibi_mae_ms": 4.9592073767,
+      "ibi_rmse_ms": 7.1537048598,
+      "rmssd_mae_ms": 1.5678360738,
+      "sdnn_mae_ms": 0.9525092871,
+      "pnn50_mae": 1.3014315895,
+      "lfhf_mae": 0.2498414488,
+      "corrected_pct": 0.0737463127,
+      "cost_s_per_min": 0.022193267
+    },
+    "qppg (slope-sum)": {
+      "n": 22,
+      "f1_pct": 99.205529722,
+      "ibi_mae_ms": 4.7933314446,
+      "ibi_rmse_ms": 7.2569567916,
+      "rmssd_mae_ms": 13.9797810915,
+      "sdnn_mae_ms": 4.2728558639,
+      "pnn50_mae": 1.2401791836,
+      "lfhf_mae": 0.6542204653,
+      "corrected_pct": 0.5613590526,
+      "cost_s_per_min": 0.0032202362
+    },
+    "HeartPy": {
+      "n": 22,
+      "f1_pct": 99.8230542217,
+      "ibi_mae_ms": 5.1706347846,
+      "ibi_rmse_ms": 7.2790914673,
+      "rmssd_mae_ms": 4.5211063241,
+      "sdnn_mae_ms": 2.4777253457,
+      "pnn50_mae": 1.2383796774,
+      "lfhf_mae": 0.4442559205,
+      "corrected_pct": 0.1705031077,
+      "cost_s_per_min": 0.0210474325
+    }
+  },
+  "prv_floor_rmse_ms": 6.92083832378205,
+  "best_excess_over_floor_ms": 0.002431602871828531,
+  "r_f1_ibi_rmse": -0.39039031709963046,
+  "r_f1_rmssd_error": -0.7521279012913923,
+  "correction_comparison": {
+    "MSPTDfast v2": {
+      "ibi_rmse_ms__Lipponen-Tarvainen": 7.1537048598,
+      "ibi_rmse_ms__median/MAD": 6.0571035735,
+      "rmssd_mae_ms__Lipponen-Tarvainen": 1.5678360738,
+      "rmssd_mae_ms__median/MAD": 2.4018385482
+    },
+    "MSPTD": {
+      "ibi_rmse_ms__Lipponen-Tarvainen": 6.9232699267,
+      "ibi_rmse_ms__median/MAD": 6.0557133663,
+      "rmssd_mae_ms__Lipponen-Tarvainen": 1.8616156718,
+      "rmssd_mae_ms__median/MAD": 1.9552736577
+    },
+    "qppg (slope-sum)": {
+      "ibi_rmse_ms__Lipponen-Tarvainen": 7.2569567916,
+      "ibi_rmse_ms__median/MAD": 5.9928852801,
+      "rmssd_mae_ms__Lipponen-Tarvainen": 13.9797810915,
+      "rmssd_mae_ms__median/MAD": 2.1081099985
+    },
+    "TERMA": {
+      "ibi_rmse_ms__Lipponen-Tarvainen": 7.0486469776,
+      "ibi_rmse_ms__median/MAD": 6.0754852606,
+      "rmssd_mae_ms__Lipponen-Tarvainen": 3.2958938404,
+      "rmssd_mae_ms__median/MAD": 2.4416547878
+    },
+    "HeartPy": {
+      "ibi_rmse_ms__Lipponen-Tarvainen": 7.2790914673,
+      "ibi_rmse_ms__median/MAD": 6.0900579189,
+      "rmssd_mae_ms__Lipponen-Tarvainen": 4.5211063241,
+      "rmssd_mae_ms__median/MAD": 2.0876531856
+    },
+    "find_peaks baseline": {
+      "ibi_rmse_ms__Lipponen-Tarvainen": 6.9606724228,
+      "ibi_rmse_ms__median/MAD": 6.3002244916,
+      "rmssd_mae_ms__Lipponen-Tarvainen": 2.290725762,
+      "rmssd_mae_ms__median/MAD": 2.3960488082
+    }
+  },
+  "discrimination": [
+    {
+      "metric": "beat-detection F1",
+      "best": 99.9160217878,
+      "worst": 99.205529722,
+      "spread_ratio": 0.9928891077,
+      "cv_pct": 0.2780528185
+    },
+    {
+      "metric": "IBI RMSE",
+      "best": 6.9232699267,
+      "worst": 7.2790914673,
+      "spread_ratio": 1.051395012,
+      "cv_pct": 2.1143168075
+    },
+    {
+      "metric": "RMSSD error",
+      "best": 1.5678360738,
+      "worst": 13.9797810915,
+      "spread_ratio": 8.9166089011,
+      "cv_pct": 103.0658770902
+    },
+    {
+      "metric": "SDNN error",
+      "best": 0.9525092871,
+      "worst": 4.2728558639,
+      "spread_ratio": 4.4858941763,
+      "cv_pct": 61.8196906607
+    }
+  ],
+  "e2_quantisation_max_residual_ms": 0.2432638189860441
+}
