@@ -54,7 +54,16 @@ def nonlinear(ibi_s: np.ndarray) -> dict[str, float]:
     return out
 
 
-def sample_entropy(x: np.ndarray, m: int = 2, r_factor: float = 0.2) -> float:
+def sample_entropy(x: np.ndarray, m: int = 2, r_factor: float = 0.2,
+                   direct_limit: int = 8000) -> float:
+    """Chebyshev-distance sample entropy.
+
+    Two embedded vectors match when every corresponding pair of scalars is within r.
+    So build the scalar tolerance matrix M[i, j] = |x_i - x_j| <= r once, and an
+    embedding-dimension-mm match is simply the AND of mm diagonally shifted copies of
+    it. That turns the whole count into a handful of boolean array operations and
+    reuses the same M for both m and m+1, instead of looping per template.
+    """
     x = np.asarray(x, dtype=float)
     n = len(x)
     if n < m + 2:
@@ -63,14 +72,26 @@ def sample_entropy(x: np.ndarray, m: int = 2, r_factor: float = 0.2) -> float:
     if r <= 0:
         return np.nan
 
-    def count(mm: int) -> int:
-        # Chebyshev distance between all embedded vector pairs, excluding self-matches.
-        emb = np.lib.stride_tricks.sliding_window_view(x, mm)
-        total = 0
-        for i in range(len(emb) - 1):
-            dist = np.max(np.abs(emb[i + 1 :] - emb[i]), axis=1)
-            total += int(np.sum(dist <= r))
-        return total
+    if n <= direct_limit:
+        tol = np.abs(x[:, None] - x[None, :]) <= r
+
+        def count(mm: int) -> int:
+            k = n - mm + 1
+            if k < 2:
+                return 0
+            acc = tol[0:k, 0:k].copy()
+            for d in range(1, mm):
+                acc &= tol[d:d + k, d:d + k]
+            return int(np.count_nonzero(np.triu(acc, 1)))
+    else:
+        # n^2 booleans would be unreasonable; fall back to per-template comparison.
+        def count(mm: int) -> int:
+            emb = np.lib.stride_tricks.sliding_window_view(x, mm)
+            total = 0
+            for i in range(len(emb) - 1):
+                total += int(np.count_nonzero(
+                    np.max(np.abs(emb[i + 1:] - emb[i]), axis=1) <= r))
+            return total
 
     a, b = count(m + 1), count(m)
     if a == 0 or b == 0:
@@ -93,12 +114,19 @@ def dfa_alpha1(x: np.ndarray, lo: int = 4, hi: int = 16) -> float:
             fluct.append(np.nan)
             continue
         seg = y[: nseg * s].reshape(nseg, s)
-        t = np.arange(s)
-        resid = []
-        for row in seg:
-            coef = np.polyfit(t, row, 1)
-            resid.append(row - np.polyval(coef, t))
-        fluct.append(float(np.sqrt(np.mean(np.asarray(resid) ** 2))))
+        # Closed-form least-squares detrend of every segment at once. Identical to
+        # np.polyfit(t, row, 1) per row, but that route cost ~34k polyfit calls per
+        # record sweep and dominated the HRV stage.
+        t = np.arange(s, dtype=float)
+        t_c = t - t.mean()
+        sxx = float(t_c @ t_c)
+        if sxx == 0:
+            fluct.append(np.nan)
+            continue
+        seg_mean = seg.mean(axis=1, keepdims=True)
+        slope = ((seg - seg_mean) @ t_c) / sxx
+        resid = seg - (slope[:, None] * t_c + seg_mean)
+        fluct.append(float(np.sqrt(np.mean(resid**2))))
     fluct = np.asarray(fluct, dtype=float)
     ok = np.isfinite(fluct) & (fluct > 0)
     if ok.sum() < 3:

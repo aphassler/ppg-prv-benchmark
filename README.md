@@ -141,10 +141,48 @@ benchmark:
 pip install -e ".[dev]"
 python scripts/00_fetch_data.py       # ~150 MB, verified against SHA256SUMS.txt
 python scripts/01_qc_reference.py     # must pass before any result is believable
-python scripts/02_run_detectors.py    # main sweep
-python scripts/03_experiments.py      # E1-E4
+python scripts/02_run_detectors.py    # main sweep      (~9 s, 20 workers)
+python scripts/03_experiments.py      # E1-E4           (~13 s)
+python scripts/06_cost.py             # serial cost measurement
 python scripts/04_analyse.py          # tables in results/, figures in figures/
 ```
+
+Both sweeps fan out across records with `--jobs N` (`--jobs 1` forces serial). To check an
+optimisation has not moved any number:
+
+```bash
+python scripts/05_verify.py results/reference/benchmark_main.csv results/benchmark_main.csv --tol 1e-9
+```
+
+### Performance
+
+The first complete sweep took ~840 s; it now takes **9.3 s**, and the experiments **13.0 s**
+— 90x and 115x — with all ~112,000 field comparisons against the original results agreeing
+to within 1e-9.
+
+| Change | Why it helped |
+| --- | --- |
+| Cache detection per record | detection does not depend on coverage, so it ran 4x redundantly |
+| Vectorise DFA | 34,393 `polyfit` calls per record replaced by closed-form least squares (up to 158x) |
+| Vectorise sample entropy | recast as ANDs of shifted tolerance-matrix diagonals (6-11x) |
+| Vectorise the MSPTD scalogram | 9.2 M interpreted iterations per record become ~30 k array ops (30x) |
+| Cache the reference HRV | the ECG side was recomputed once per detector |
+| Fan out across records | 20 worker processes on a 10-core/20-thread Xeon |
+
+**The GPU was measured, not assumed.** The MSPTD scalogram is the only large data-parallel
+kernel — 404 M boolean comparisons for the whole benchmark, ~40 µs of arithmetic on an
+RTX A4000 — but it is 10.5 % of the remaining runtime, so making it free would take 9.3 s
+to 8.3 s. Everything else (Lomb–Scargle on ~600 irregular points, greedy beat matching,
+branchy artifact classification) is small-array, data-dependent work of the wrong shape for
+a GPU. RAM is not a constraint: 20 workers hold ~7 MB of signal each against 29 GB.
+
+**One measured number changed.** MSPTD's cost was 0.89 s/min using NeuroKit2's reference
+implementation; vectorised — bit-identical output, asserted per window — it is 0.03 s/min.
+Against the reference implementation MSPTDfast v2 measures **2.3 %** of MSPTD's cost
+(Charlton reports 5.3–35.9 %); against a vectorised MSPTD it measures 68 %. Most of the
+advantage visible in Python is interpreter overhead, not the algorithmic scale reduction.
+Cost is therefore measured in a dedicated serial pass ([`06_cost.py`](scripts/06_cost.py)) —
+timings taken inside the parallel sweep record scheduling pressure, not work.
 
 Unit tests run entirely on a synthetic PPG with known beat times, so they need no download:
 

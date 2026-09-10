@@ -39,6 +39,20 @@ def _order(labels) -> list[str]:
     return [c for c in ORDER if c in set(labels)]
 
 
+def serial_costs() -> pd.Series | None:
+    """Per-detector cost from the dedicated serial pass, if it has been run.
+
+    Timings recorded inside the parallel sweep measure scheduling pressure, not work, so
+    they are replaced here by scripts/06_cost.py's single-process measurement whenever
+    that is available.
+    """
+    p = RESULTS / "detector_cost.csv"
+    if not p.exists():
+        return None
+    d = pd.read_csv(p)
+    return d.groupby("detector_label")["best_s_per_min"].median()
+
+
 def leaderboard(df: pd.DataFrame, coverage: float = 1.0) -> pd.DataFrame:
     ok = df[(df.coverage_target == coverage) & (~df.failed)]
     agg = ok.groupby("detector_label").agg(
@@ -53,6 +67,9 @@ def leaderboard(df: pd.DataFrame, coverage: float = 1.0) -> pd.DataFrame:
         corrected_pct=("fraction_corrected", lambda s: 100 * s.median()),
         cost_s_per_min=("detect_s_per_min", "median"),
     )
+    costs = serial_costs()
+    if costs is not None:
+        agg["cost_s_per_min"] = agg.index.map(costs).astype(float)
     return agg.reindex(_order(agg.index)).sort_values("ibi_rmse_ms")
 
 

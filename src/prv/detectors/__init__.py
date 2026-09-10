@@ -14,6 +14,7 @@ from typing import Literal
 
 import numpy as np
 
+from . import msptd as _msptd
 from . import qppg as _qppg
 from . import terma as _terma
 
@@ -133,8 +134,9 @@ REGISTRY: dict[str, Detector] = {
         key="msptd",
         label="MSPTD",
         anchor="peak",
-        fn=windowed(_nk_findpeaks("bishop"), win_s=6.0, overlap_s=1.0),
-        source="NeuroKit2 (Bishop & Ercole 2018), 6 s windows",
+        fn=windowed(_msptd.detect, win_s=6.0, overlap_s=1.0),
+        source="own vectorised port (Bishop & Ercole 2018), 6 s windows; "
+               "verified bit-identical to NeuroKit2 method='bishop'",
     ),
     "qppg": Detector(
         key="qppg",

@@ -451,7 +451,8 @@ footer {
         <caption>
           Median across 22 records at 100&thinsp;% coverage. Two correction strategies,
           same detectors, same signals. Green marks the best cell in a column pair;
-          red marks the failure.
+          red marks the failure. Cost is measured in a separate serial pass &mdash;
+          timings taken inside the parallel sweep record scheduling pressure, not work.
         </caption>
         <thead>
           <tr>
@@ -473,7 +474,7 @@ footer {
           <tr>
             <td class="name">MSPTD</td><td class="n">99.90</td>
             <td class="n">6.92</td><td class="n">6.06</td>
-            <td class="n">1.86</td><td class="n">1.96</td><td class="n">0.89</td>
+            <td class="n">1.86</td><td class="n">1.96</td><td class="n">0.03</td>
           </tr>
           <tr>
             <td class="name">TERMA</td><td class="n">99.88</td>
@@ -889,6 +890,68 @@ footer {
         <b>explodes on the ~74,000 DC pedestal</b>, producing an edge transient 44 standard
         deviations tall that swamped every amplitude threshold and made four of the six
         detectors return zero beats.
+      </p>
+    </div>
+  </section>
+
+  <!-- ======================================================== performance -->
+  <section class="panel">
+    <div class="col">
+      <p class="eyebrow">Reproduction cost</p>
+      <h2>The whole benchmark now runs in nine seconds</h2>
+      <p>
+        The first complete sweep took about 14 minutes. It now takes <b>9.3&nbsp;s</b>, and
+        the four experiments <b>13.0&nbsp;s</b> &mdash; a 90&times; and 115&times; reduction,
+        with every one of ~112,000 field comparisons against the original results agreeing
+        to within 1&times;10<sup>&minus;9</sup>.
+      </p>
+    </div>
+
+    <div class="scroll">
+      <table>
+        <caption>Where the time went. Measured on a 10-core / 20-thread Xeon 6242R.</caption>
+        <thead>
+          <tr><th>Change</th><th>Effect</th><th class="n">Sweep time</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="name">Starting point</td><td>serial, recompute everything</td><td class="n">~840 s</td></tr>
+          <tr><td class="name">Cache detection per record</td><td>detection does not depend on coverage, so it was being repeated four times</td><td class="n">&mdash;</td></tr>
+          <tr><td class="name">Vectorise DFA and sample entropy</td><td>34,393 <code>polyfit</code> calls per record removed; entropy recast as boolean matrix ANDs</td><td class="n">&mdash;</td></tr>
+          <tr><td class="name">Vectorise the MSPTD scalogram</td><td>9.2 M interpreted iterations per record become ~30 k array operations</td><td class="n">&mdash;</td></tr>
+          <tr><td class="name">Cache the reference HRV</td><td>the ECG side was recomputed once per detector</td><td class="n">&mdash;</td></tr>
+          <tr class="best"><td class="name">Fan out across records</td><td>20 worker processes</td><td class="n">9.3 s</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <p class="callout">
+        The GPU was measured out rather than assumed away. The scalogram is the only
+        large data-parallel kernel in the pipeline &mdash; 404&nbsp;M boolean comparisons
+        for the entire benchmark, about 40&nbsp;&micro;s of arithmetic on an RTX A4000 and
+        comfortably resident in 16&nbsp;GB. But it is <b>10.5&nbsp;% of the remaining
+        runtime</b>, so making it free would take 9.3&nbsp;s to 8.3&nbsp;s. Everything else
+        &mdash; Lomb&ndash;Scargle over ~600 irregular points, greedy beat matching,
+        branchy artifact classification &mdash; is small-array, data-dependent work that a
+        GPU is the wrong shape for. Memory was never a constraint either: 20 workers hold
+        ~7&nbsp;MB of signal each against 29&nbsp;GB available.
+      </p>
+      <p>
+        One result changed, and it is worth stating. MSPTD's cost was 0.89&nbsp;s per
+        minute of signal using NeuroKit2's reference implementation, which populates the
+        scalogram with a doubly nested Python loop. Vectorised &mdash; bit-identical
+        output, asserted per window against the reference &mdash; it runs <b>30&times;
+        faster</b>, at 0.03&nbsp;s/min.
+      </p>
+      <p>
+        That reframes the published efficiency claim. Against the reference
+        implementation, MSPTDfast v2 measured here at <b>2.3&nbsp;%</b> of MSPTD's cost,
+        consistent with Charlton's reported 5.3&ndash;35.9&nbsp;%. Against a vectorised
+        MSPTD it measures 68&nbsp;%. Most of the advantage visible in Python is
+        interpreter overhead in the reference code, not the algorithmic reduction in scale
+        count. The algorithmic saving is real &mdash; MSPTDfast does roughly 47&times; less
+        scalogram work &mdash; but the like-for-like ratio remains unmeasured, because
+        MSPTDfast itself still runs the reference loops here.
       </p>
     </div>
   </section>
