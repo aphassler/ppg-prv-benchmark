@@ -8,3 +8,4 @@ results/benchmark_main.csv
 results/e2_sampling.csv
 results/e3_correction.csv
 .claude/
+HANDOVER.md
