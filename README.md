@@ -5,7 +5,7 @@ scored on beat-to-beat interval error and HRV endpoint error rather than on beat
 
 [![CI](https://github.com/aphassler/ppg-prv-benchmark/actions/workflows/ci.yml/badge.svg)](https://github.com/aphassler/ppg-prv-benchmark/actions/workflows/ci.yml)
 
-**[Read the full benchmark report &rarr;](https://claude.ai/code/artifact/e6900d88-e0c8-4439-a571-6765d1abfce2)**
+**[Read the full benchmark report &rarr;](https://claude.ai/code/artifact/e6900d88-e0c8-4439-a571-6765d1abfce2)** &middot; picking this up cold? start with **[HANDOVER.md](HANDOVER.md)**
 
 ## Headline results
 
